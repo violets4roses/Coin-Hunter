@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Hunter</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#080b18">
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #080b18;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+#gameWrapper {
+    text-align: center;
+}
+
+h1 {
+    margin: 5px 0 10px;
+    color: #ffd43b;
+    text-shadow: 0 0 15px #ffb300;
+}
+
+#stats {
+    display: flex;
+    justify-content: space-between;
+    background: #151a2e;
+    border: 2px solid #293252;
+    padding: 8px 15px;
+    border-radius: 12px 12px 0 0;
+    font-weight: bold;
+}
+
+#game {
+    position: relative;
+    width: min(800px, 95vw);
+    height: min(600px, 70vh);
+    min-height: 450px;
+    background:
+        radial-gradient(circle at 20% 20%, #182447 0 2px, transparent 3px),
+        radial-gradient(circle at 70% 70%, #182447 0 2px, transparent 3px),
+        #0d1225;
+    background-size: 80px 80px;
+    border: 3px solid #38446e;
+    overflow: hidden;
+}
+
+#player {
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background: #39ff88;
+    border-radius: 50%;
+    box-shadow: 0 0 20px #39ff88;
+}
+
+.coin {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: #ffd43b;
+    border-radius: 50%;
+    border: 3px solid #ff9f00;
+    box-shadow: 0 0 18px #ffd43b;
+    animation: coinSpin 0.7s linear infinite;
+}
+
+.enemy {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    background: #ff4057;
+    border-radius: 8px;
+    box-shadow: 0 0 18px #ff4057;
+}
+
+.enemy::before,
+.enemy::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+}
+
+.enemy::before {
+    left: 7px;
+}
+
+.enemy::after {
+    right: 7px;
+}
+
+#message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(5, 7, 17, 0.85);
+    z-index: 10;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#message h2 {
+    font-size: 42px;
+    margin: 0;
+    color: #ffd43b;
+}
+
+button {
+    border: none;
+    border-radius: 12px;
+    padding: 13px 25px;
+    background: #ffd43b;
+    color: #17120a;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 15px #ffd43b;
+}
+
+button:hover {
+    transform: scale(1.05);
+}
+
+#controls {
+    display: none;
+    margin-top: 10px;
+    user-select: none;
+}
+
+.controlRow {
+    display: flex;
+    justify-content: center;
+}
+
+.controlBtn {
+    width: 60px;
+    height: 50px;
+    margin: 3px;
+    padding: 0;
+    background: #20294a;
+    color: white;
+    box-shadow: none;
+}
+
+@keyframes coinSpin {
+    0% {
+        transform: scaleX(1);
+    }
+    50% {
+        transform: scaleX(0.35);
+    }
+    100% {
+        transform: scaleX(1);
+    }
+}
+
+@media (max-width: 700px) {
+    #controls {
+        display: block;
+    }
+
+    #game {
+        height: 60vh;
+        min-height: 400px;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="gameWrapper">
+
+    <h1>🪙 COIN HUNTER</h1>
+
+    <div id="stats">
+        <span>🪙 <span id="score">0</span></span>
+        <span>❤️ <span id="lives">3</span></span>
+        <span>⭐ LVL <span id="level">1</span></span>
+        <span>🏆 <span id="best">0</span></span>
+    </div>
+
+    <div id="game">
+
+        <div id="player"></div>
+
+        <div id="message">
+            <h2>COIN HUNTER</h2>
+            <p>Surink kuo daugiau monetų!</p>
+            <button onclick="startGame()">START</button>
+        </div>
+
+    </div>
+
+    <div id="controls">
+        <div class="controlRow">
+            <button class="controlBtn"
+                ontouchstart="keys.up=true"
+                ontouchend="keys.up=false">▲</button>
+        </div>
+
+        <div class="controlRow">
+            <button class="controlBtn"
+                ontouchstart="keys.left=true"
+                ontouchend="keys.left=false">◀</button>
+
+            <button class="controlBtn"
+                ontouchstart="keys.down=true"
+                ontouchend="keys.down=false">▼</button>
+
+            <button class="controlBtn"
+                ontouchstart="keys.right=true"
+                ontouchend="keys.right=false">▶</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+
+const scoreText = document.getElementById("score");
+const livesText = document.getElementById("lives");
+const levelText = document.getElementById("level");
+const bestText = document.getElementById("best");
+
+const message = document.getElementById("message");
+
+let playerX = 100;
+let playerY = 100;
+
+let score = 0;
+let lives = 3;
+let level = 1;
+
+let coins = [];
+let enemies = [];
+
+let gameRunning = false;
+
+let bestScore = Number(localStorage.getItem("coinHunterBest")) || 0;
+bestText.textContent = bestScore;
+
+const keys = {
+    up: false,
+    down: false,
+    left: false,
+    right: false
+};
+
+document.addEventListener("keydown", e => {
+
+    if (e.key === "ArrowUp" || e.key.toLowerCase() === "w")
+        keys.up = true;
+
+    if (e.key === "ArrowDown" || e.key.toLowerCase() === "s")
+        keys.down = true;
+
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a")
+        keys.left = true;
+
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d")
+        keys.right = true;
+});
+
+document.addEventListener("keyup", e => {
+
+    if (e.key === "ArrowUp" || e.key.toLowerCase() === "w")
+        keys.up = false;
+
+    if (e.key === "ArrowDown" || e.key.toLowerCase() === "s")
+        keys.down = false;
+
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a")
+        keys.left = false;
+
+    if (e.key === "ArrowRight" || e.key.toLowerCase() === "d")
+        keys.right = false;
+});
+
+function randomPosition(size) {
+
+    return {
+        x: Math.random() * (game.clientWidth - size),
+        y: Math.random() * (game.clientHeight - size)
+    };
+}
+
+function createCoin() {
+
+    const coin = document.createElement("div");
+
+    coin.className = "coin";
+
+    const pos = randomPosition(24);
+
+    coin.style.left = pos.x + "px";
+    coin.style.top = pos.y + "px";
+
+    game.appendChild(coin);
+
+    coins.push({
+        element: coin,
+        x: pos.x,
+        y: pos.y
+    });
+}
+
+function createEnemy() {
+
+    const enemy = document.createElement("div");
+
+    enemy.className = "enemy";
+
+    const pos = randomPosition(32);
+
+    enemy.style.left = pos.x + "px";
+    enemy.style.top = pos.y + "px";
+
+    game.appendChild(enemy);
+
+    const angle = Math.random() * Math.PI * 2;
+
+    enemies.push({
+        element: enemy,
+        x: pos.x,
+        y: pos.y,
+        vx: Math.cos(angle),
+        vy: Math.sin(angle)
+    });
+}
+
+function clearObjects() {
+
+    coins.forEach(c => c.element.remove());
+    enemies.forEach(e => e.element.remove());
+
+    coins = [];
+    enemies = [];
+}
+
+function startGame() {
+
+    clearObjects();
+
+    score = 0;
+    lives = 3;
+    level = 1;
+
+    playerX = game.clientWidth / 2 - 18;
+    playerY = game.clientHeight / 2 - 18;
+
+    player.style.left = playerX + "px";
+    player.style.top = playerY + "px";
+
+    updateStats();
+
+    message.style.display = "none";
+
+    gameRunning = true;
+
+    createCoin();
+
+    for (let i = 0; i < 2; i++) {
+        createEnemy();
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+function updateStats() {
+
+    scoreText.textContent = score;
+    livesText.textContent = lives;
+    levelText.textContent = level;
+    bestText.textContent = bestScore;
+}
+
+function distance(x1, y1, x2, y2) {
+
+    return Math.sqrt(
+        (x1 - x2) ** 2 +
+        (y1 - y2) ** 2
+    );
+}
+
+function collectCoins() {
+
+    coins.forEach((coin, index) => {
+
+        if (
+            distance(
+                playerX + 17,
+                playerY + 17,
+                coin.x + 12,
+                coin.y + 12
+            ) < 28
+        ) {
+
+            coin.element.remove();
+            coins.splice(index, 1);
+
+            score++;
+
+            if (score > bestScore) {
+
+                bestScore = score;
+
+                localStorage.setItem(
+                    "coinHunterBest",
+                    bestScore
+                );
+            }
+
+            if (score % 5 === 0) {
+
+                level++;
+
+                createEnemy();
+            }
+
+            createCoin();
+
+            updateStats();
+        }
+
+    });
+}
+
+let hitCooldown = 0;
+
+function checkEnemies() {
+
+    if (hitCooldown > 0) {
+        hitCooldown--;
+        return;
+    }
+
+    enemies.forEach(enemy => {
+
+        if (
+            distance(
+                playerX + 17,
+                playerY + 17,
+                enemy.x + 16,
+                enemy.y + 16
+            ) < 38
+        ) {
+
+            lives--;
+
+            hitCooldown = 60;
+
+            player.style.opacity = "0.4";
+
+            setTimeout(() => {
+                player.style.opacity = "1";
+            }, 500);
+
+            if (lives <= 0) {
+                gameOver();
+            }
+
+            updateStats();
+        }
+
+    });
+}
+
+function moveEnemies() {
+
+    enemies.forEach(enemy => {
+
+        const speed = 1 + level * 0.18;
+
+        enemy.x += enemy.vx * speed;
+        enemy.y += enemy.vy * speed;
+
+        if (
+            enemy.x <= 0 ||
+            enemy.x >= game.clientWidth - 32
+        ) {
+            enemy.vx *= -1;
+        }
+
+        if (
+            enemy.y <= 0 ||
+            enemy.y >= game.clientHeight - 32
+        ) {
+            enemy.vy *= -1;
+        }
+
+        enemy.element.style.left = enemy.x + "px";
+        enemy.element.style.top = enemy.y + "px";
+
+    });
+}
+
+function movePlayer() {
+
+    const speed = 5;
+
+    if (keys.up) playerY -= speed;
+    if (keys.down) playerY += speed;
+    if (keys.left) playerX -= speed;
+    if (keys.right) playerX += speed;
+
+    playerX = Math.max(
+        0,
+        Math.min(
+            game.clientWidth - 35,
+            playerX
+        )
+    );
+
+    playerY = Math.max(
+        0,
+        Math.min(
+            game.clientHeight - 35,
+            playerY
+        )
+    );
+
+    player.style.left = playerX + "px";
+    player.style.top = playerY + "px";
+}
+
+function gameLoop() {
+
+    if (!gameRunning) return;
+
+    movePlayer();
+    moveEnemies();
+
+    collectCoins();
+    checkEnemies();
+
+    requestAnimationFrame(gameLoop);
+}
+
+function gameOver() {
+
+    gameRunning = false;
+
+    message.style.display = "flex";
+
+    message.innerHTML = `
+        <h2>💀 GAME OVER</h2>
+        <p>Surinkai <b>${score}</b> monetų!</p>
+        <p>Pasiekei <b>${level}</b> lygį.</p>
+        <button onclick="startGame()">PLAY AGAIN</button>
+    `;
+}
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js");
+    });
+}
+
+</script>
+
+</body>
+</html>
